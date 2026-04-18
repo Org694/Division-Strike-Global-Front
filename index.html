@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Division Strike: 2D Combat</title>
+    <style>
+        body { margin: 0; background: #000; overflow: hidden; font-family: 'Arial', sans-serif; color: white; }
+        #game-container { position: relative; width: 800px; height: 600px; margin: 20px auto; border: 4px solid #333; }
+        canvas { background: #222; display: block; }
+        
+        /* UI Overlay Styles */
+        .overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(0,0,0,0.8); }
+        .hidden { display: none !important; }
+        
+        /* Weapon Shop UI */
+        #shop-menu { background: #1a1a1a; padding: 20px; border: 2px solid #fbbf24; border-radius: 10px; text-align: center; }
+        .weapon-card { display: inline-block; padding: 10px; margin: 10px; border: 1px solid #444; background: #333; }
+        .btn { padding: 10px 20px; background: #fbbf24; color: black; border: none; cursor: pointer; font-weight: bold; }
+        .btn:disabled { background: #555; cursor: not-allowed; }
+
+        /* HUD */
+        #hud { position: absolute; top: 10px; left: 10px; pointer-events: none; }
+        #sound-toggle { position: absolute; top: 10px; right: 10px; cursor: pointer; background: #444; padding: 5px; }
+    </style>
+</head>
+<body>
+
+<div id="game-container">
+    <canvas id="gameCanvas" width="800" height="600"></canvas>
+
+    <div id="story-screen" class="overlay">
+        <h2 style="color: #fbbf24;">MISSION: THE LAST STAND</h2>
+        <p id="story-text" style="max-width: 400px; text-align: center; line-height: 1.5;"></p>
+        <button class="btn" onclick="startShop()">CONTINUE</button>
+    </div>
+
+    <div id="shop-screen" class="overlay hidden">
+        <h1>ARMORY (Select Weapon)</h1>
+        <p>Coins: $<span id="coin-count">0</span></p>
+        <div id="shop-menu">
+            <div class="weapon-card">
+                <h3>AK-47</h3>
+                <p>Fast Fire</p>
+                <button class="btn" onclick="buyWeapon('AK47', 0)">EQUIP (FREE)</button>
+            </div>
+            <div class="weapon-card">
+                <h3>SNIPER</h3>
+                <p>One-Shot Kill</p>
+                <button class="btn" id="sniper-btn" onclick="buyWeapon('Sniper', 500)">BUY $500</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="hud" class="hidden">
+        <div>Kills: <span id="kill-val">0</span></div>
+        <div>Weapon: <span id="weapon-val">AK47</span></div>
+    </div>
+
+    <div id="sound-toggle" onclick="toggleAudio()">🔊 Sound: ON</div>
+</div>
+
+<script>
+/** * GAME CONFIG & DATA 
+ */
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+
+let gameState = 'STORY';
+let coins = 1000;
+let kills = 0;
+let soundEnabled = true;
+let currentWeapon = 'AK47';
+let enemies = [];
+let particles = [];
+
+const storyContent = "The enemies have breached the northern sector. You are the last defender. Pick your gear and eliminate the hostiles. Victory is the only option.";
+
+/**
+ * AUDIO ENGINE
+ * (Using a partner/song approach: we simulate a heavy combat beat)
+ */
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+function playShootSound() {
+    if(!soundEnabled) return;
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.connect(gain); gain.connect(audioCtx.destination);
+    osc.type = 'square';
+    osc.frequency.setValueAtTime(150, audioCtx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+    gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+    osc.start(); osc.stop(audioCtx.currentTime + 0.1);
+}
+
+/**
+ * GAME LOGIC
+ */
+function typeStory() {
+    let i = 0;
+    const target = document.getElementById('story-text');
+    function typing() {
+        if (i < storyContent.length) {
+            target.innerHTML += storyContent.charAt(i);
+            i++; setTimeout(typing, 30);
+        }
+    }
+    typing();
+}
+
+function startShop() {
+    document.getElementById('story-screen').classList.add('hidden');
+    document.getElementById('shop-screen').classList.remove('hidden');
+    document.getElementById('coin-count').innerText = coins;
+}
+
+function buyWeapon(name, price) {
+    if (coins >= price) {
+        coins -= price;
+        currentWeapon = name;
+        startGame();
+    } else {
+        alert("Not enough coins!");
+    }
+}
+
+function toggleAudio() {
+    soundEnabled = !soundEnabled;
+    document.getElementById('sound-toggle').innerText = soundEnabled ? "🔊 Sound: ON" : "🔇 Sound: OFF";
+}
+
+function startGame() {
+    document.getElementById('shop-screen').classList.add('hidden');
+    document.getElementById('hud').classList.remove('hidden');
+    gameState = 'PLAYING';
+    spawnEnemy();
+    gameLoop();
+}
+
+/**
+ * CORE ENGINE
+ */
+function spawnEnemy() {
+    if(gameState !== 'PLAYING') return;
+    enemies.push({
+        x: canvas.width + 50,
+        y: Math.random() * (canvas.height - 100) + 50,
+        speed: 2 + (kills * 0.1),
+        health: currentWeapon === 'Sniper' ? 1 : 2
+    });
+    setTimeout(spawnEnemy, 2000 - (kills * 20));
+}
+
+function gameLoop() {
+    if(gameState !== 'PLAYING') return;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Draw Player (Fixed left side)
+    ctx.fillStyle = '#3b82f6';
+    ctx.fillRect(50, canvas.height/2 - 25, 40, 50);
+    ctx.fillStyle = '#000';
+    ctx.fillRect(80, canvas.height/2 - 5, 25, 10); // Gun barrel
+
+    // Handle Enemies
+    enemies.forEach((enemy, index) => {
+        enemy.x -= enemy.speed;
+        ctx.fillStyle = '#ef4444';
+        ctx.fillRect(enemy.x, enemy.y, 40, 40);
+
+        if(enemy.x < 0) {
+            alert("Game Over! Kills: " + kills);
+            location.reload();
+        }
+    });
+
+    requestAnimationFrame(gameLoop);
+}
+
+// Click to Shoot
+canvas.addEventListener('mousedown', () => {
+    if(gameState !== 'PLAYING') return;
+    playShootSound();
+    
+    // Check hit logic
+    enemies.forEach((enemy, index) => {
+        // Simplified hitbox (raycasting style)
+        if (enemy.x < canvas.width) {
+            enemy.health--;
+            if(enemy.health <= 0) {
+                enemies.splice(index, 1);
+                kills++;
+                document.getElementById('kill-val').innerText = kills;
+            }
+        }
+    });
+});
+
+// Run Init
+typeStory();
+
+</script>
+</body>
+  </html>
+  
