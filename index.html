@@ -3,131 +3,126 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Division Strike: 2D Combat</title>
+    <title>DIVISION STRIKE: 3D FPS</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <style>
-        body { margin: 0; background: #000; overflow: hidden; font-family: 'Arial', sans-serif; color: white; }
-        #game-container { position: relative; width: 800px; height: 600px; margin: 20px auto; border: 4px solid #333; }
-        canvas { background: #222; display: block; }
-        
-        /* UI Overlay Styles */
-        .overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(0,0,0,0.8); }
+        body { margin: 0; background: #000; overflow: hidden; font-family: 'Segoe UI', sans-serif; color: white; }
+        #ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
+        .overlay { pointer-events: auto; position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(0,0,0,0.85); z-index: 10; }
         .hidden { display: none !important; }
         
-        /* Weapon Shop UI */
-        #shop-menu { background: #1a1a1a; padding: 20px; border: 2px solid #fbbf24; border-radius: 10px; text-align: center; }
-        .weapon-card { display: inline-block; padding: 10px; margin: 10px; border: 1px solid #444; background: #333; }
-        .btn { padding: 10px 20px; background: #fbbf24; color: black; border: none; cursor: pointer; font-weight: bold; }
-        .btn:disabled { background: #555; cursor: not-allowed; }
-
+        /* Shop & Story UI */
+        #shop-menu { background: #111; padding: 30px; border: 2px solid #fbbf24; border-radius: 15px; text-align: center; }
+        .weapon-card { display: inline-block; padding: 15px; margin: 10px; border: 1px solid #444; background: #222; width: 150px; }
+        .btn { padding: 12px 25px; background: #fbbf24; color: black; border: none; cursor: pointer; font-weight: bold; font-size: 16px; margin-top: 10px; }
+        
+        /* Crosshair */
+        #crosshair { position: absolute; top: 50%; left: 50%; width: 20px; height: 20px; border: 2px solid #0f0; border-radius: 50%; transform: translate(-50%, -50%); pointer-events: none; }
+        
         /* HUD */
-        #hud { position: absolute; top: 10px; left: 10px; pointer-events: none; }
-        #sound-toggle { position: absolute; top: 10px; right: 10px; cursor: pointer; background: #444; padding: 5px; }
+        #hud { position: absolute; bottom: 20px; left: 20px; font-size: 24px; text-shadow: 2px 2px #000; }
+        #sound-toggle { position: absolute; top: 20px; right: 20px; cursor: pointer; background: rgba(255,255,255,0.1); padding: 10px; pointer-events: auto; }
     </style>
 </head>
 <body>
 
-<div id="game-container">
-    <canvas id="gameCanvas" width="800" height="600"></canvas>
+    <div id="ui-layer">
+        <div id="crosshair"></div>
+        <div id="hud" class="hidden">
+            KILLS: <span id="kill-val">0</span> | WEAPON: <span id="weapon-val">AK47</span> | CASH: $<span id="cash-val">1000</span>
+        </div>
+        <div id="sound-toggle" onclick="toggleAudio()">🔊 Sound: ON</div>
+    </div>
 
     <div id="story-screen" class="overlay">
-        <h2 style="color: #fbbf24;">MISSION: THE LAST STAND</h2>
-        <p id="story-text" style="max-width: 400px; text-align: center; line-height: 1.5;"></p>
-        <button class="btn" onclick="startShop()">CONTINUE</button>
+        <h1 style="color: #fbbf24; letter-spacing: 5px;">DIVISION STRIKE</h1>
+        <p id="story-text" style="max-width: 500px; text-align: center; font-size: 18px; min-height: 60px;"></p>
+        <button class="btn" onclick="showShop()">ENTER ARMORY</button>
     </div>
 
     <div id="shop-screen" class="overlay hidden">
-        <h1>ARMORY (Select Weapon)</h1>
-        <p>Coins: $<span id="coin-count">0</span></p>
+        <h1>SELECT LOADOUT</h1>
         <div id="shop-menu">
             <div class="weapon-card">
                 <h3>AK-47</h3>
-                <p>Fast Fire</p>
-                <button class="btn" onclick="buyWeapon('AK47', 0)">EQUIP (FREE)</button>
+                <p>Standard Issue</p>
+                <button class="btn" onclick="buyWeapon('AK47', 0)">EQUIP</button>
             </div>
             <div class="weapon-card">
-                <h3>SNIPER</h3>
-                <p>One-Shot Kill</p>
-                <button class="btn" id="sniper-btn" onclick="buyWeapon('Sniper', 500)">BUY $500</button>
+                <h3>GOLD SNIPER</h3>
+                <p>One-Tap Kill</p>
+                <button class="btn" id="sniper-btn" onclick="buyWeapon('Sniper', 500)">$500</button>
             </div>
         </div>
     </div>
 
-    <div id="hud" class="hidden">
-        <div>Kills: <span id="kill-val">0</span></div>
-        <div>Weapon: <span id="weapon-val">AK47</span></div>
-    </div>
-
-    <div id="sound-toggle" onclick="toggleAudio()">🔊 Sound: ON</div>
-</div>
-
 <script>
-/** * GAME CONFIG & DATA 
- */
-const canvas = document.getElementById('gameCanvas');
-const ctx = canvas.getContext('2d');
-
+/** 3D CONFIG **/
+let scene, camera, renderer, gun;
 let gameState = 'STORY';
-let coins = 1000;
-let kills = 0;
-let soundEnabled = true;
-let currentWeapon = 'AK47';
+let kills = 0, coins = 1000, soundEnabled = true, currentWeapon = 'AK47';
 let enemies = [];
-let particles = [];
+const storyContent = "Invasion detected. The sector is compromised. Buy your weapons and hold the line. Do not let them reach the perimeter.";
 
-const storyContent = "The enemies have breached the northern sector. You are the last defender. Pick your gear and eliminate the hostiles. Victory is the only option.";
+function init3D() {
+    scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x050505);
+    scene.fog = new THREE.Fog(0x050505, 10, 50);
 
-/**
- * AUDIO ENGINE
- * (Using a partner/song approach: we simulate a heavy combat beat)
- */
-const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-function playShootSound() {
-    if(!soundEnabled) return;
-    const osc = audioCtx.createOscillator();
-    const gain = audioCtx.createGain();
-    osc.connect(gain); gain.connect(audioCtx.destination);
-    osc.type = 'square';
-    osc.frequency.setValueAtTime(150, audioCtx.currentTime);
-    osc.frequency.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
-    gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
-    osc.start(); osc.stop(audioCtx.currentTime + 0.1);
+    camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+    renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    document.body.appendChild(renderer.domElement);
+
+    // Lighting
+    const light = new THREE.DirectionalLight(0xffffff, 1);
+    light.position.set(5, 10, 7.5);
+    scene.add(light);
+    scene.add(new THREE.AmbientLight(0x404040));
+
+    // Ground
+    const grid = new THREE.GridHelper(100, 50, 0x444444, 0x222222);
+    scene.add(grid);
+
+    // Create Gun Model (Simple blocks)
+    gun = new THREE.Group();
+    const body = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.2, 0.8), new THREE.MeshStandardMaterial({color: 0x111111}));
+    const handle = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.4, 0.2), new THREE.MeshStandardMaterial({color: 0x111111}));
+    handle.position.y = -0.2;
+    handle.position.z = 0.2;
+    gun.add(body, handle);
+    gun.position.set(0.5, -0.4, -0.8);
+    camera.add(gun);
+    scene.add(camera);
+
+    window.addEventListener('resize', onWindowResize);
 }
 
-/**
- * GAME LOGIC
- */
+/** GAME LOGIC **/
 function typeStory() {
     let i = 0;
     const target = document.getElementById('story-text');
-    function typing() {
+    const timer = setInterval(() => {
         if (i < storyContent.length) {
             target.innerHTML += storyContent.charAt(i);
-            i++; setTimeout(typing, 30);
-        }
-    }
-    typing();
+            i++;
+        } else { clearInterval(timer); }
+    }, 40);
 }
 
-function startShop() {
+function showShop() {
     document.getElementById('story-screen').classList.add('hidden');
     document.getElementById('shop-screen').classList.remove('hidden');
-    document.getElementById('coin-count').innerText = coins;
 }
 
 function buyWeapon(name, price) {
     if (coins >= price) {
         coins -= price;
         currentWeapon = name;
+        document.getElementById('weapon-val').innerText = name;
+        document.getElementById('cash-val').innerText = coins;
         startGame();
-    } else {
-        alert("Not enough coins!");
     }
-}
-
-function toggleAudio() {
-    soundEnabled = !soundEnabled;
-    document.getElementById('sound-toggle').innerText = soundEnabled ? "🔊 Sound: ON" : "🔇 Sound: OFF";
 }
 
 function startGame() {
@@ -135,71 +130,102 @@ function startGame() {
     document.getElementById('hud').classList.remove('hidden');
     gameState = 'PLAYING';
     spawnEnemy();
-    gameLoop();
+    animate();
 }
 
-/**
- * CORE ENGINE
- */
 function spawnEnemy() {
     if(gameState !== 'PLAYING') return;
-    enemies.push({
-        x: canvas.width + 50,
-        y: Math.random() * (canvas.height - 100) + 50,
-        speed: 2 + (kills * 0.1),
-        health: currentWeapon === 'Sniper' ? 1 : 2
-    });
-    setTimeout(spawnEnemy, 2000 - (kills * 20));
+    const geometry = new THREE.BoxGeometry(1, 2, 1);
+    const material = new THREE.MeshStandardMaterial({ color: 0xff0000 });
+    const enemy = new THREE.Mesh(geometry, material);
+    
+    // Position enemies far away in 3D space
+    enemy.position.set((Math.random() - 0.5) * 20, 1, -40);
+    scene.add(enemy);
+    enemies.push({ mesh: enemy, health: currentWeapon === 'Sniper' ? 1 : 2 });
+    
+    setTimeout(spawnEnemy, 2000 - Math.min(kills * 50, 1500));
 }
 
-function gameLoop() {
+function playShootSound() {
+    if(!soundEnabled) return;
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(200, audioCtx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+    gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+    osc.connect(gain); gain.connect(audioCtx.destination);
+    osc.start(); osc.stop(audioCtx.currentTime + 0.1);
+}
+
+function animate() {
     if(gameState !== 'PLAYING') return;
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    requestAnimationFrame(animate);
 
-    // Draw Player (Fixed left side)
-    ctx.fillStyle = '#3b82f6';
-    ctx.fillRect(50, canvas.height/2 - 25, 40, 50);
-    ctx.fillStyle = '#000';
-    ctx.fillRect(80, canvas.height/2 - 5, 25, 10); // Gun barrel
+    // Gun Sway Effect
+    gun.position.x = 0.5 + Math.sin(Date.now() * 0.002) * 0.02;
+    gun.position.y = -0.4 + Math.cos(Date.now() * 0.002) * 0.02;
 
-    // Handle Enemies
-    enemies.forEach((enemy, index) => {
-        enemy.x -= enemy.speed;
-        ctx.fillStyle = '#ef4444';
-        ctx.fillRect(enemy.x, enemy.y, 40, 40);
-
-        if(enemy.x < 0) {
-            alert("Game Over! Kills: " + kills);
+    // Move Enemies
+    for (let i = enemies.length - 1; i >= 0; i--) {
+        enemies[i].mesh.position.z += 0.1 + (kills * 0.005);
+        
+        // Game Over Condition
+        if (enemies[i].mesh.position.z > 2) {
+            gameState = 'OVER';
+            alert("SECTOR BREACHED! Total Kills: " + kills);
             location.reload();
         }
-    });
-
-    requestAnimationFrame(gameLoop);
+    }
+    renderer.render(scene, camera);
 }
 
-// Click to Shoot
-canvas.addEventListener('mousedown', () => {
-    if(gameState !== 'PLAYING') return;
+// Shooting Logic
+window.addEventListener('mousedown', () => {
+    if (gameState !== 'PLAYING') return;
     playShootSound();
-    
-    // Check hit logic
-    enemies.forEach((enemy, index) => {
-        // Simplified hitbox (raycasting style)
-        if (enemy.x < canvas.width) {
-            enemy.health--;
-            if(enemy.health <= 0) {
-                enemies.splice(index, 1);
-                kills++;
-                document.getElementById('kill-val').innerText = kills;
-            }
+
+    // Recoil animation
+    gun.position.z += 0.2;
+    setTimeout(() => gun.position.z = -0.8, 50);
+
+    // Raycasting (Shoot middle of screen)
+    const raycaster = new THREE.Raycaster();
+    raycaster.setFromCamera(new THREE.Vector2(0,0), camera);
+    const intersects = raycaster.intersectObjects(enemies.map(e => e.mesh));
+
+    if (intersects.length > 0) {
+        const hitMesh = intersects[0].object;
+        const enemyIdx = enemies.findIndex(e => e.mesh === hitMesh);
+        
+        enemies[enemyIdx].health--;
+        if (enemies[enemyIdx].health <= 0) {
+            scene.remove(hitMesh);
+            enemies.splice(enemyIdx, 1);
+            kills++;
+            coins += 50;
+            document.getElementById('kill-val').innerText = kills;
+            document.getElementById('cash-val').innerText = coins;
         }
-    });
+    }
 });
 
-// Run Init
-typeStory();
+function toggleAudio() {
+    soundEnabled = !soundEnabled;
+    document.getElementById('sound-toggle').innerText = soundEnabled ? "🔊 Sound: ON" : "🔇 Sound: OFF";
+}
 
+function onWindowResize() {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+}
+
+init3D();
+typeStory();
 </script>
 </body>
-  </html>
-  
+    </html>
+    
