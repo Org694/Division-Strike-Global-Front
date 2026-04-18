@@ -3,23 +3,23 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DIVISION STRIKE: PRO EDITION</title>
+    <title>DIVISION STRIKE: ULTIMATE SHOP</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <style>
         body { margin: 0; background: #000; overflow: hidden; font-family: 'Segoe UI', sans-serif; color: white; cursor: crosshair; }
         #ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
-        .overlay { pointer-events: auto; position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(0,0,0,0.85); z-index: 10; }
+        .overlay { pointer-events: auto; position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(0,0,0,0.9); z-index: 10; }
         .hidden { display: none !important; }
         
-        #shop-menu { background: #111; padding: 30px; border: 2px solid #fbbf24; border-radius: 15px; text-align: center; box-shadow: 0 0 20px rgba(251, 191, 36, 0.2); }
-        .weapon-card { display: inline-block; padding: 15px; margin: 10px; border: 1px solid #444; background: #222; width: 150px; transition: 0.3s; }
-        .weapon-card:hover { border-color: #fbbf24; }
-        .btn { padding: 12px 25px; background: #fbbf24; color: black; border: none; cursor: pointer; font-weight: bold; font-size: 16px; margin-top: 10px; text-transform: uppercase; }
+        #shop-menu { background: #111; padding: 20px; border: 2px solid #fbbf24; border-radius: 15px; text-align: center; display: flex; gap: 15px; }
+        .weapon-card { padding: 15px; border: 1px solid #444; background: #222; width: 160px; transition: 0.3s; }
+        .weapon-card:hover { border-color: #fbbf24; background: #2a2a2a; }
+        .btn { width: 100%; padding: 10px; background: #fbbf24; color: black; border: none; cursor: pointer; font-weight: bold; margin-top: 10px; }
+        .btn:disabled { background: #555; cursor: not-allowed; }
         
-        #crosshair { position: absolute; top: 50%; left: 50%; width: 12px; height: 12px; border: 2px solid #0f0; border-radius: 50%; transform: translate(-50%, -50%); pointer-events: none; }
-        
-        #hud { position: absolute; bottom: 30px; left: 30px; font-size: 22px; text-shadow: 2px 2px #000; background: rgba(0,0,0,0.5); padding: 15px; border-radius: 5px; border-left: 5px solid #fbbf24; }
-        #sound-toggle { position: absolute; top: 20px; right: 20px; cursor: pointer; background: rgba(255,255,255,0.1); padding: 10px; pointer-events: auto; border: 1px solid #444; }
+        #crosshair { position: absolute; top: 50%; left: 50%; width: 14px; height: 14px; border: 2px solid #0f0; border-radius: 50%; transform: translate(-50%, -50%); pointer-events: none; }
+        #hud { position: absolute; bottom: 30px; left: 30px; font-size: 20px; background: rgba(0,0,0,0.7); padding: 15px; border-left: 5px solid #fbbf24; }
+        .cash-text { color: #4ade80; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -27,85 +27,76 @@
     <div id="ui-layer">
         <div id="crosshair"></div>
         <div id="hud" class="hidden">
-            KILLS: <span id="kill-val">0</span> | WEAPON: <span id="weapon-val">AK47</span> | CASH: $<span id="cash-val">1000</span>
+            KILLS: <span id="kill-val">0</span> | WEAPON: <span id="weapon-val">NONE</span> | <span class="cash-text">CASH: $<span id="cash-val">0</span></span>
         </div>
-        <div id="sound-toggle" onclick="toggleAudio()">🔊 Sound: ON</div>
     </div>
 
     <div id="story-screen" class="overlay">
-        <h1 style="color: #fbbf24; letter-spacing: 8px; margin-bottom: 0;">DIVISION STRIKE</h1>
-        <p style="color: #666; font-size: 12px; margin-top: 5px;">TACTICAL 3D SURVIVAL</p>
-        <p id="story-text" style="max-width: 500px; text-align: center; font-size: 18px; min-height: 60px; color: #ddd;"></p>
-        <button class="btn" onclick="showShop()">ENTER ARMORY</button>
+        <h1 style="color: #fbbf24; letter-spacing: 5px;">DIVISION STRIKE</h1>
+        <p id="story-text" style="max-width: 500px; text-align: center;"></p>
+        <button class="btn" style="width: 200px" onclick="showShop()">OPEN SHOP</button>
     </div>
 
     <div id="shop-screen" class="overlay hidden">
-        <h1>ARMORY ACCESS</h1>
+        <h2 style="color: #fbbf24;">SELECT YOUR WEAPON</h2>
+        <p>Your Balance: <span class="cash-text">$<span id="shop-cash">0</span></span></p>
         <div id="shop-menu">
             <div class="weapon-card">
                 <h3>AK-47</h3>
-                <button class="btn" onclick="buyWeapon('AK47', 0)">EQUIP</button>
+                <p style="font-size: 12px; color: #888;">Standard Auto</p>
+                <button class="btn" id="buy-ak" onclick="buyWeapon('AK47', 0)">EQUIP FREE</button>
             </div>
             <div class="weapon-card">
-                <h3>GOLD SNIPER</h3>
-                <button class="btn" id="sniper-btn" onclick="buyWeapon('Sniper', 500)">$500</button>
+                <h3>SNIPER</h3>
+                <p style="font-size: 12px; color: #888;">1-Shot Kill</p>
+                <button class="btn" id="buy-sniper" onclick="buyWeapon('Sniper', 500)">BUY $500</button>
+            </div>
+            <div class="weapon-card" style="border-color: #f87171;">
+                <h3>BAZOOKA</h3>
+                <p style="font-size: 12px; color: #888;">Area Damage</p>
+                <button class="btn" id="buy-bazooka" onclick="buyWeapon('Bazooka', 1200)">BUY $1200</button>
             </div>
         </div>
+        <button onclick="startGame()" class="btn" style="width: 150px; background: #fff; margin-top: 20px;">DEPLOY</button>
     </div>
 
 <script>
-/** ENGINE CORE **/
+/** ENGINE & GAME DATA **/
 let scene, camera, renderer, gun, muzzleFlash;
 let gameState = 'STORY';
-let kills = 0, coins = 1000, soundEnabled = true, currentWeapon = 'AK47';
+let kills = 0, coins = 0, currentWeapon = 'AK47';
 let enemies = [];
-const storyContent = "The perimeter has been breached. Armed hostiles approaching from all sectors. Use WASD to move, Mouse to aim, and SPACE to jump. Good luck, soldier.";
+const storyContent = "The sector is lost. Earn cash by eliminating hostiles to upgrade your arsenal. RPG/Bazooka is recommended for heavy waves.";
 
-// Movement & Camera
-let pitch = 0, yaw = 0;
-const sensitivity = 0.002;
+// Movement
 let moveForward = false, moveBackward = false, moveLeft = false, moveRight = false;
-let velocity = new THREE.Vector3();
-let canJump = true;
+let pitch = 0, yaw = 0;
 
 function init3D() {
     scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x0a0a0a);
-    scene.fog = new THREE.Fog(0x0a0a0a, 10, 70);
+    scene.background = new THREE.Color(0x050505);
+    scene.fog = new THREE.Fog(0x050505, 10, 80);
 
     camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
     renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.setPixelRatio(window.devicePixelRatio);
     document.body.appendChild(renderer.domElement);
 
-    // Light
-    scene.add(new THREE.AmbientLight(0x404040, 1.5));
-    const dLight = new THREE.DirectionalLight(0xffffff, 0.8);
-    dLight.position.set(10, 20, 10);
-    scene.add(dLight);
-
-    // Floor
-    const floorGeo = new THREE.PlaneGeometry(200, 200);
-    const floorMat = new THREE.MeshStandardMaterial({ color: 0x111111 });
-    const floor = new THREE.Mesh(floorGeo, floorMat);
-    floor.rotation.x = -Math.PI / 2;
+    scene.add(new THREE.AmbientLight(0x404040, 2));
+    const floor = new THREE.Mesh(new THREE.PlaneGeometry(500, 500), new THREE.MeshStandardMaterial({ color: 0x111111 }));
+    floor.rotation.x = -Math.PI/2;
     scene.add(floor);
-    scene.add(new THREE.GridHelper(200, 50, 0x333333, 0x222222));
+    scene.add(new THREE.GridHelper(500, 100, 0x333333, 0x222222));
 
-    // Gun + Muzzle Flash
+    // Create Base Gun Group
     gun = new THREE.Group();
-    const body = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.15, 0.7), new THREE.MeshStandardMaterial({color: 0x1a1a1a}));
-    const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.5), new THREE.MeshStandardMaterial({color: 0x000000}));
-    barrel.rotation.x = Math.PI / 2; barrel.position.z = -0.4;
-    
-    muzzleFlash = new THREE.PointLight(0xfbbf24, 0, 3);
-    const flashMesh = new THREE.Mesh(new THREE.SphereGeometry(0.05), new THREE.MeshBasicMaterial({color: 0xfbbf24}));
+    const body = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.2, 0.8), new THREE.MeshStandardMaterial({color: 0x222222}));
+    muzzleFlash = new THREE.PointLight(0xffaa00, 0, 10);
+    const flashMesh = new THREE.Mesh(new THREE.SphereGeometry(0.1), new THREE.MeshBasicMaterial({color: 0xffaa00}));
     muzzleFlash.add(flashMesh);
-    muzzleFlash.position.z = -0.7;
-    
-    gun.add(body, barrel, muzzleFlash);
-    gun.position.set(0.35, -0.3, -0.6);
+    muzzleFlash.position.z = -0.5;
+    gun.add(body, muzzleFlash);
+    gun.position.set(0.4, -0.4, -0.6);
     camera.add(gun);
     scene.add(camera);
 
@@ -118,7 +109,6 @@ function setupControls() {
         if(e.code === 'KeyS') moveBackward = true;
         if(e.code === 'KeyA') moveLeft = true;
         if(e.code === 'KeyD') moveRight = true;
-        if(e.code === 'Space' && canJump) { velocity.y += 0.2; canJump = false; }
     });
     document.addEventListener('keyup', (e) => {
         if(e.code === 'KeyW') moveForward = false;
@@ -127,21 +117,25 @@ function setupControls() {
         if(e.code === 'KeyD') moveRight = false;
     });
     document.addEventListener('mousemove', (e) => {
-        if (document.pointerLockElement === document.body && gameState === 'PLAYING') {
-            yaw -= e.movementX * sensitivity;
-            pitch -= e.movementY * sensitivity;
+        if (document.pointerLockElement === document.body) {
+            yaw -= e.movementX * 0.002;
+            pitch -= e.movementY * 0.002;
             pitch = Math.max(-Math.PI/2.5, Math.min(Math.PI/2.5, pitch));
-            camera.rotation.order = "YXZ"; 
+            camera.rotation.order = "YXZ";
             camera.rotation.set(pitch, yaw, 0);
         }
     });
-    document.body.addEventListener('click', () => { if (gameState === 'PLAYING') document.body.requestPointerLock(); });
 }
 
-/** GAMEPLAY FUNCTIONS **/
+/** SHOP LOGIC **/
 function showShop() {
     document.getElementById('story-screen').classList.add('hidden');
     document.getElementById('shop-screen').classList.remove('hidden');
+    document.getElementById('shop-cash').innerText = coins;
+    
+    // Disable buttons if can't afford
+    document.getElementById('buy-sniper').disabled = coins < 500;
+    document.getElementById('buy-bazooka').disabled = coins < 1200;
 }
 
 function buyWeapon(name, price) {
@@ -150,6 +144,14 @@ function buyWeapon(name, price) {
         currentWeapon = name;
         document.getElementById('weapon-val').innerText = name;
         document.getElementById('cash-val').innerText = coins;
+        
+        // Visual Gun Change
+        if(name === 'Bazooka') {
+            gun.scale.set(2, 2, 2); // Make it a big launcher
+        } else {
+            gun.scale.set(1, 1, 1);
+        }
+        
         startGame();
     }
 }
@@ -157,132 +159,104 @@ function buyWeapon(name, price) {
 function startGame() {
     document.getElementById('shop-screen').classList.add('hidden');
     document.getElementById('hud').classList.remove('hidden');
-    gameState = 'PLAYING';
-    spawnEnemy();
-    animate();
+    if (gameState !== 'PLAYING') {
+        gameState = 'PLAYING';
+        document.body.requestPointerLock();
+        spawnEnemy();
+        animate();
+    }
 }
 
 function spawnEnemy() {
     if(gameState !== 'PLAYING') return;
-    const enemy = new THREE.Group();
-    const body = new THREE.Mesh(new THREE.BoxGeometry(1.2, 2.5, 1.2), new THREE.MeshStandardMaterial({ color: 0xff3333 }));
-    const head = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.8, 0.8), new THREE.MeshStandardMaterial({ color: 0xaa0000 }));
-    head.position.y = 1.7;
-    enemy.add(body, head);
-    
+    const enemy = new THREE.Mesh(
+        new THREE.BoxGeometry(1.5, 3, 1.5), 
+        new THREE.MeshStandardMaterial({ color: 0xff0000 })
+    );
     const angle = Math.random() * Math.PI * 2;
-    const dist = 50;
-    enemy.position.set(camera.position.x + Math.cos(angle) * dist, 1.25, camera.position.z + Math.sin(angle) * dist);
+    enemy.position.set(camera.position.x + Math.cos(angle)*50, 1.5, camera.position.z + Math.sin(angle)*50);
     scene.add(enemy);
-    enemies.push({ mesh: enemy, health: currentWeapon === 'Sniper' ? 1 : 2, bob: Math.random() * 5 });
+    enemies.push({ mesh: enemy, health: currentWeapon === 'AK47' ? 3 : 1 });
     
-    setTimeout(spawnEnemy, Math.max(2500 - (kills * 50), 1000));
+    setTimeout(spawnEnemy, 2000 - Math.min(kills * 20, 1500));
 }
 
 function animate() {
     if(gameState !== 'PLAYING') return;
     requestAnimationFrame(animate);
 
-    // Player Movement
-    const speed = 0.12;
-    if (moveForward) camera.translateZ(-speed);
-    if (moveBackward) camera.translateZ(speed);
-    if (moveLeft) camera.translateX(-speed);
-    if (moveRight) camera.translateX(speed);
+    if (moveForward) camera.translateZ(-0.15);
+    if (moveBackward) camera.translateZ(0.15);
+    if (moveLeft) camera.translateX(-0.15);
+    if (moveRight) camera.translateX(0.15);
 
-    // Gravity & Jump
-    camera.position.y += velocity.y;
-    if (camera.position.y > 1.6) { velocity.y -= 0.01; } 
-    else { camera.position.y = 1.6; velocity.y = 0; canJump = true; }
-
-    // Gun Bob
-    gun.position.y = -0.3 + Math.sin(Date.now() * 0.005) * 0.01;
-
-    // Enemy AI
-    for (let i = enemies.length - 1; i >= 0; i--) {
-        const e = enemies[i];
-        const dir = new THREE.Vector3().copy(camera.position).sub(e.mesh.position);
-        dir.y = 0; // Keep on ground
-        e.mesh.lookAt(camera.position.x, 1.25, camera.position.z);
-        e.mesh.position.add(dir.normalize().multiplyScalar(0.07 + (kills * 0.001)));
-        
-        // Bobbing animation
-        e.mesh.position.y = 1.25 + Math.sin(Date.now() * 0.01 + e.bob) * 0.2;
-
-        if (e.mesh.position.distanceTo(camera.position) < 2) {
-            gameState = 'OVER';
-            alert("SQUAD WIPED. Kills: " + kills);
+    enemies.forEach((e, i) => {
+        const dir = new THREE.Vector3().copy(camera.position).sub(e.mesh.position).normalize();
+        e.mesh.position.add(dir.multiplyScalar(0.1 + (kills * 0.002)));
+        if (e.mesh.position.distanceTo(camera.position) < 2.5) {
+            alert("GAME OVER! Kills: " + kills);
             location.reload();
         }
-    }
+    });
     renderer.render(scene, camera);
 }
 
 window.addEventListener('mousedown', () => {
-    if (gameState !== 'PLAYING' || document.pointerLockElement !== document.body) return;
+    if (gameState !== 'PLAYING') return;
+
+    // Shot Effect
+    muzzleFlash.intensity = currentWeapon === 'Bazooka' ? 20 : 5;
+    if(currentWeapon === 'Bazooka') muzzleFlash.children[0].scale.set(5,5,5);
+    else muzzleFlash.children[0].scale.set(1,1,1);
     
-    // Muzzle Flash Effect
-    muzzleFlash.intensity = 5;
-    setTimeout(() => muzzleFlash.intensity = 0, 40);
+    setTimeout(() => { muzzleFlash.intensity = 0; }, 50);
 
-    // Sound
-    if(soundEnabled) {
-        const audioCtx = new AudioContext();
-        const osc = audioCtx.createOscillator();
-        const g = audioCtx.createGain();
-        osc.type = 'sawtooth'; osc.frequency.value = 200;
-        g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.1);
-        osc.connect(g); g.connect(audioCtx.destination);
-        osc.start(); osc.stop(audioCtx.currentTime + 0.1);
-    }
-
-    // Raycast
     const ray = new THREE.Raycaster();
     ray.setFromCamera(new THREE.Vector2(0,0), camera);
-    const hits = ray.intersectObjects(enemies.map(e => e.mesh), true);
+    const hits = ray.intersectObjects(enemies.map(e => e.mesh));
 
     if (hits.length > 0) {
-        let hitObj = hits[0].object;
-        while(hitObj.parent && !hitObj.parent.isScene) hitObj = hitObj.parent; // Find top parent
-        
+        const hitObj = hits[0].object;
         const idx = enemies.findIndex(e => e.mesh === hitObj);
-        if(idx !== -1) {
+        
+        // Bazooka kills multiple nearby enemies, Sniper kills 1 instantly
+        if(currentWeapon === 'Bazooka') {
+            enemies.forEach((e, i) => {
+                if(e.mesh.position.distanceTo(hitObj.position) < 10) {
+                    scene.remove(e.mesh);
+                    kills++; coins += 100;
+                }
+            });
+            enemies = enemies.filter(e => e.mesh.parent === scene);
+        } else {
             enemies[idx].health--;
-            if (enemies[idx].health <= 0) {
+            if(enemies[idx].health <= 0) {
                 scene.remove(hitObj);
                 enemies.splice(idx, 1);
                 kills++; coins += 50;
-                document.getElementById('kill-val').innerText = kills;
-                document.getElementById('cash-val').innerText = coins;
             }
         }
+        document.getElementById('kill-val').innerText = kills;
+        document.getElementById('cash-val').innerText = coins;
     }
 });
 
 function typeStory() {
     let i = 0; const target = document.getElementById('story-text');
     const t = setInterval(() => {
-        if (i < storyContent.length) { target.innerHTML += storyContent.charAt(i++); } 
-        else { clearInterval(t); }
+        if (i < storyContent.length) target.innerHTML += storyContent.charAt(i++);
+        else clearInterval(t);
     }, 30);
-}
-
-function toggleAudio() { 
-    soundEnabled = !soundEnabled; 
-    document.getElementById('sound-toggle').innerText = soundEnabled ? "🔊 Sound: ON" : "🔇 Sound: OFF"; 
-}
-
-function onWindowResize() {
-    camera.aspect = window.innerWidth / window.innerHeight;
-    camera.updateProjectionMatrix();
-    renderer.setSize(window.innerWidth, window.innerHeight);
 }
 
 init3D();
 typeStory();
-window.addEventListener('resize', onWindowResize);
-
+window.addEventListener('resize', () => {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+});
 </script>
 </body>
-                    </html>
+    </html>
     
