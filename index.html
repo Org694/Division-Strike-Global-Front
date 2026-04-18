@@ -6,28 +6,27 @@
     <title>DIVISION STRIKE: 3D FPS</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <style>
-        body { margin: 0; background: #000; overflow: hidden; font-family: 'Segoe UI', sans-serif; color: white; }
+        body { margin: 0; background: #000; overflow: hidden; font-family: 'Segoe UI', sans-serif; color: white; cursor: crosshair; }
         #ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
         .overlay { pointer-events: auto; position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(0,0,0,0.85); z-index: 10; }
         .hidden { display: none !important; }
         
-        /* Shop & Story UI */
         #shop-menu { background: #111; padding: 30px; border: 2px solid #fbbf24; border-radius: 15px; text-align: center; }
         .weapon-card { display: inline-block; padding: 15px; margin: 10px; border: 1px solid #444; background: #222; width: 150px; }
         .btn { padding: 12px 25px; background: #fbbf24; color: black; border: none; cursor: pointer; font-weight: bold; font-size: 16px; margin-top: 10px; }
         
-        /* Crosshair */
-        #crosshair { position: absolute; top: 50%; left: 50%; width: 20px; height: 20px; border: 2px solid #0f0; border-radius: 50%; transform: translate(-50%, -50%); pointer-events: none; }
+        #crosshair { position: absolute; top: 50%; left: 50%; width: 10px; height: 10px; background: #0f0; border-radius: 50%; transform: translate(-50%, -50%); pointer-events: none; box-shadow: 0 0 5px #0f0; }
         
-        /* HUD */
-        #hud { position: absolute; bottom: 20px; left: 20px; font-size: 24px; text-shadow: 2px 2px #000; }
+        #hud { position: absolute; bottom: 20px; left: 20px; font-size: 20px; text-shadow: 2px 2px #000; }
         #sound-toggle { position: absolute; top: 20px; right: 20px; cursor: pointer; background: rgba(255,255,255,0.1); padding: 10px; pointer-events: auto; }
+        #instruction { position: absolute; top: 60px; left: 50%; transform: translateX(-50%); font-size: 14px; color: #fbbf24; }
     </style>
 </head>
 <body>
 
     <div id="ui-layer">
         <div id="crosshair"></div>
+        <div id="instruction" class="hidden">Click screen to lock mouse & look around</div>
         <div id="hud" class="hidden">
             KILLS: <span id="kill-val">0</span> | WEAPON: <span id="weapon-val">AK47</span> | CASH: $<span id="cash-val">1000</span>
         </div>
@@ -45,60 +44,78 @@
         <div id="shop-menu">
             <div class="weapon-card">
                 <h3>AK-47</h3>
-                <p>Standard Issue</p>
                 <button class="btn" onclick="buyWeapon('AK47', 0)">EQUIP</button>
             </div>
             <div class="weapon-card">
                 <h3>GOLD SNIPER</h3>
-                <p>One-Tap Kill</p>
                 <button class="btn" id="sniper-btn" onclick="buyWeapon('Sniper', 500)">$500</button>
             </div>
         </div>
     </div>
 
 <script>
-/** 3D CONFIG **/
 let scene, camera, renderer, gun;
 let gameState = 'STORY';
 let kills = 0, coins = 1000, soundEnabled = true, currentWeapon = 'AK47';
 let enemies = [];
-const storyContent = "Invasion detected. The sector is compromised. Buy your weapons and hold the line. Do not let them reach the perimeter.";
+const storyContent = "Invasion detected. Use your mouse to aim and click to shoot. Do not let the enemies breach the sector.";
+
+// Camera rotation variables
+let pitch = 0; // Up/Down
+let yaw = 0;   // Left/Right
+const sensitivity = 0.002;
 
 function init3D() {
     scene = new THREE.Scene();
     scene.background = new THREE.Color(0x050505);
-    scene.fog = new THREE.Fog(0x050505, 10, 50);
+    scene.fog = new THREE.Fog(0x050505, 10, 60);
 
     camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
     renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setSize(window.innerWidth, window.innerHeight);
     document.body.appendChild(renderer.domElement);
 
-    // Lighting
-    const light = new THREE.DirectionalLight(0xffffff, 1);
-    light.position.set(5, 10, 7.5);
-    scene.add(light);
     scene.add(new THREE.AmbientLight(0x404040));
+    const sun = new THREE.DirectionalLight(0xffffff, 1);
+    sun.position.set(5, 10, 7.5);
+    scene.add(sun);
 
-    // Ground
-    const grid = new THREE.GridHelper(100, 50, 0x444444, 0x222222);
+    const grid = new THREE.GridHelper(200, 40, 0x444444, 0x222222);
     scene.add(grid);
 
-    // Create Gun Model (Simple blocks)
+    // Gun Model
     gun = new THREE.Group();
-    const body = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.2, 0.8), new THREE.MeshStandardMaterial({color: 0x111111}));
-    const handle = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.4, 0.2), new THREE.MeshStandardMaterial({color: 0x111111}));
-    handle.position.y = -0.2;
-    handle.position.z = 0.2;
-    gun.add(body, handle);
-    gun.position.set(0.5, -0.4, -0.8);
+    const body = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.15, 0.7), new THREE.MeshStandardMaterial({color: 0x222222}));
+    const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.4), new THREE.MeshStandardMaterial({color: 0x000000}));
+    barrel.rotation.x = Math.PI / 2;
+    barrel.position.z = -0.4;
+    gun.add(body, barrel);
+    gun.position.set(0.4, -0.3, -0.6);
     camera.add(gun);
     scene.add(camera);
+
+    // MOUSE CONTROL LOGIC
+    document.addEventListener('mousemove', (e) => {
+        if (document.pointerLockElement === document.body && gameState === 'PLAYING') {
+            yaw -= e.movementX * sensitivity;
+            pitch -= e.movementY * sensitivity;
+
+            // Limit looking up and down (so you don't flip over)
+            pitch = Math.max(-Math.PI/2.5, Math.min(Math.PI/2.5, pitch));
+
+            camera.rotation.order = "YXZ"; 
+            camera.rotation.set(pitch, yaw, 0);
+        }
+    });
+
+    // Pointer Lock Request
+    document.body.addEventListener('click', () => {
+        if (gameState === 'PLAYING') document.body.requestPointerLock();
+    });
 
     window.addEventListener('resize', onWindowResize);
 }
 
-/** GAME LOGIC **/
 function typeStory() {
     let i = 0;
     const target = document.getElementById('story-text');
@@ -128,6 +145,7 @@ function buyWeapon(name, price) {
 function startGame() {
     document.getElementById('shop-screen').classList.add('hidden');
     document.getElementById('hud').classList.remove('hidden');
+    document.getElementById('instruction').classList.remove('hidden');
     gameState = 'PLAYING';
     spawnEnemy();
     animate();
@@ -135,16 +153,19 @@ function startGame() {
 
 function spawnEnemy() {
     if(gameState !== 'PLAYING') return;
-    const geometry = new THREE.BoxGeometry(1, 2, 1);
-    const material = new THREE.MeshStandardMaterial({ color: 0xff0000 });
-    const enemy = new THREE.Mesh(geometry, material);
+    const enemy = new THREE.Mesh(
+        new THREE.BoxGeometry(1.2, 2.5, 1.2), 
+        new THREE.MeshStandardMaterial({ color: 0xff4444 })
+    );
     
-    // Position enemies far away in 3D space
-    enemy.position.set((Math.random() - 0.5) * 20, 1, -40);
+    // Spawns enemies in a circle around the player
+    const angle = Math.random() * Math.PI * 2;
+    const dist = 40;
+    enemy.position.set(Math.cos(angle) * dist, 1.25, Math.sin(angle) * dist);
     scene.add(enemy);
     enemies.push({ mesh: enemy, health: currentWeapon === 'Sniper' ? 1 : 2 });
     
-    setTimeout(spawnEnemy, 2000 - Math.min(kills * 50, 1500));
+    setTimeout(spawnEnemy, 2500 - Math.min(kills * 40, 1800));
 }
 
 function playShootSound() {
@@ -152,10 +173,10 @@ function playShootSound() {
     const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     const osc = audioCtx.createOscillator();
     const gain = audioCtx.createGain();
-    osc.type = 'sawtooth';
-    osc.frequency.setValueAtTime(200, audioCtx.currentTime);
+    osc.type = 'square';
+    osc.frequency.setValueAtTime(150, audioCtx.currentTime);
     osc.frequency.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
-    gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+    gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
     osc.connect(gain); gain.connect(audioCtx.destination);
     osc.start(); osc.stop(audioCtx.currentTime + 0.1);
 }
@@ -164,34 +185,34 @@ function animate() {
     if(gameState !== 'PLAYING') return;
     requestAnimationFrame(animate);
 
-    // Gun Sway Effect
-    gun.position.x = 0.5 + Math.sin(Date.now() * 0.002) * 0.02;
-    gun.position.y = -0.4 + Math.cos(Date.now() * 0.002) * 0.02;
+    // Gun Sway based on camera movement
+    gun.position.x = 0.4 + Math.sin(Date.now() * 0.003) * 0.01;
+    gun.position.y = -0.3 + Math.cos(Date.now() * 0.003) * 0.01;
 
-    // Move Enemies
+    // Enemies move toward player (0, 0, 0)
     for (let i = enemies.length - 1; i >= 0; i--) {
-        enemies[i].mesh.position.z += 0.1 + (kills * 0.005);
+        const e = enemies[i].mesh;
+        const dir = new THREE.Vector3(0, 0, 0).sub(e.position).normalize();
+        e.position.add(dir.multiplyScalar(0.08 + (kills * 0.002)));
         
-        // Game Over Condition
-        if (enemies[i].mesh.position.z > 2) {
+        // Game Over if they touch you
+        if (e.position.distanceTo(new THREE.Vector3(0,0,0)) < 2) {
             gameState = 'OVER';
-            alert("SECTOR BREACHED! Total Kills: " + kills);
+            alert("SECTOR OVERRUN! Kills: " + kills);
             location.reload();
         }
     }
     renderer.render(scene, camera);
 }
 
-// Shooting Logic
 window.addEventListener('mousedown', () => {
-    if (gameState !== 'PLAYING') return;
+    if (gameState !== 'PLAYING' || document.pointerLockElement !== document.body) return;
     playShootSound();
 
-    // Recoil animation
-    gun.position.z += 0.2;
-    setTimeout(() => gun.position.z = -0.8, 50);
+    // Recoil
+    gun.position.z += 0.15;
+    setTimeout(() => gun.position.z = -0.6, 50);
 
-    // Raycasting (Shoot middle of screen)
     const raycaster = new THREE.Raycaster();
     raycaster.setFromCamera(new THREE.Vector2(0,0), camera);
     const intersects = raycaster.intersectObjects(enemies.map(e => e.mesh));
